@@ -30,6 +30,8 @@ my @pafMandatoryColumnList = ('query_name', 'query_length', 'query_start', 'quer
 
 chomp(my $hostname = `hostname`);
 
+my $baseAbundanceOrthologies = 'K02950,K02874,K02946,K02948,K02867,K02952,K02886,K02988,K02992,K02965';
+
 my @targetTaxonomyIdList = ();
 GetOptions(
 	'h' => \(my $help = ''),
@@ -38,6 +40,7 @@ GetOptions(
 	't=s' => \@targetTaxonomyIdList,
 	'x=s' => \(my $preset = 'map-ont'),
 	'c=f' => \(my $minimumCoverage = 0.9),
+	'b=s' => \$baseAbundanceOrthologies,
 	'P=s' => \(my $pafFile = ''),
 	'S=s' => \(my $stranded = ''),
 	'M=s' => \(my $MetaPrismDirectory = "$directory/MetaPrism"),
@@ -54,6 +57,7 @@ Options: -h       display this help message
          -t STR   target NCBI taxonomy IDs or file
          -x STR   minimap2 preset [$preset]
          -c FLOAT minimum coverage [$minimumCoverage]
+         -b STR   base abundance orthologies [$baseAbundanceOrthologies]
          -P FILE  minimap2 PAF file
          -S STR   stranded, "f" or "r"
          -M DIR   MetaPrism directory [$MetaPrismDirectory]
@@ -416,6 +420,13 @@ if(@fastqFileList) {
 		close($reader);
 	}
 	close($writer) if(defined($writer));
+	if($baseAbundanceOrthologies ne '') {
+		my @baseAbundanceOrthologyList = split(/,/, $baseAbundanceOrthologies);
+		my $baseAbundance = median(@orthologyCoverageHash{@baseAbundanceOrthologyList});
+		foreach my $orthology (sort keys %orthologyCoverageHash) {
+			$orthologyCoverageHash{$orthology} = $orthologyCoverageHash{$orthology} / $baseAbundance;
+		}
+	}
 	foreach my $orthology (sort keys %orthologyCoverageHash) {
 		print join("\t", $orthology, $orthologyCoverageHash{$orthology}), "\n";
 	}
@@ -475,4 +486,24 @@ sub getTaxonomyIdLineage {
 		$taxon = $taxon->ancestor;
 	}
 	return join(',', @taxonomyIdList);
+}
+
+sub medianIndexList {
+	my ($length) = @_;
+	if($length % 2 == 0) {
+		return ($length / 2 - 1, $length / 2);
+	} else {
+		return (($length - 1) / 2);
+	}
+}
+
+sub median {
+	my @tokenList = @_;
+	@tokenList = sort {$a <=> $b} @tokenList;
+	return mean(@tokenList[medianIndexList(scalar(@tokenList))]);
+}
+
+sub mean {
+	my @tokenList = @_;
+	return sum(@tokenList) / scalar(@tokenList);
 }
