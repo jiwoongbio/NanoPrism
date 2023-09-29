@@ -34,9 +34,9 @@ for sample in ERR3152364 ERR3152366; do awk -F'\t' '(NR > 1) {print $2}' $sample
 
 
 # Prepare coding sequences
-time perl NanoPrism.pl -p $threads -t species.filtered.txt NanoPrism.fasta
+time perl ../NanoPrism.pl -p $threads -t species.filtered.txt NanoPrism.fasta
 
 
 # Profile gene abundances
-time perl NanoPrism.pl -p $threads NanoPrism.fasta ERR3152364.fastq.gz > ERR3152364.NanoPrism.abundance.txt
-time perl NanoPrism.pl -p $threads NanoPrism.fasta ERR3152366.fastq.gz > ERR3152366.NanoPrism.abundance.txt
+time perl ../NanoPrism.pl -p $threads NanoPrism.fasta ERR3152364.fastq.gz > ERR3152364.NanoPrism.abundance.txt
+time perl ../NanoPrism.pl -p $threads NanoPrism.fasta ERR3152366.fastq.gz > ERR3152366.NanoPrism.abundance.txt

@@ -106,3 +106,18 @@ time perl NanoPrism.pl -p $threads -t species.filtered.txt NanoPrism.fasta
 time perl NanoPrism.pl -p $threads NanoPrism.fasta ERR3152364.fastq.gz > ERR3152364.NanoPrism.abundance.txt
 time perl NanoPrism.pl -p $threads NanoPrism.fasta ERR3152366.fastq.gz > ERR3152366.NanoPrism.abundance.txt
 ```
+
+By default, the abundances are normalized by the following genes:
+
+| Orthology | Definition |
+| --- | --- |
+| K02950 | RP-S12, MRPS12, rpsL; small subunit ribosomal protein S12 |
+| K02874 | RP-L14, MRPL14, rplN; large subunit ribosomal protein L14 |
+| K02946 | RP-S10, MRPS10, rpsJ; small subunit ribosomal protein S10 |
+| K02948 | RP-S11, MRPS11, rpsK; small subunit ribosomal protein S11 |
+| K02867 | RP-L11, MRPL11, rplK; large subunit ribosomal protein L11 |
+| K02952 | RP-S13, rpsM; small subunit ribosomal protein S13 |
+| K02886 | RP-L2, MRPL2, rplB; large subunit ribosomal protein L2 |
+| K02988 | RP-S5, MRPS5, rpsE; small subunit ribosomal protein S5 |
+| K02992 | RP-S7, MRPS7, rpsG; small subunit ribosomal protein S7 |
+| K02965 | RP-S19, rpsS; small subunit ribosomal protein S19 |

@@ -54,7 +54,7 @@ Usage:   perl NanoPrism_data.pl [options] [CDS.fasta [read.fastq ...]]
 Options: -h       display this help message
          -r       redownload data
          -p INT   number of CPU threads [$threads]
-         -t STR   target NCBI taxonomy IDs or file
+         -t STR   comma-separated target NCBI taxonomy IDs or file
          -x STR   minimap2 preset [$preset]
          -c FLOAT minimum coverage [$minimumCoverage]
          -b STR   base abundance orthologies [$baseAbundanceOrthologies]
