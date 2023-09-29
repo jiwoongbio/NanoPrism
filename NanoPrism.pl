@@ -7,7 +7,6 @@ local $SIG{__WARN__} = sub { die $_[0] };
 use IPC::Open2;
 use List::Util qw(sum);
 use Bio::DB::Taxonomy;
-use Bio::DB::Fasta;
 use Getopt::Long qw(:config no_ignore_case);
 
 chomp(my $directory = `readlink -f $0`);

@@ -1,9 +1,10 @@
 ## Requirements
 
 1. Perl - https://www.perl.org
-2. DIAMOND - https://github.com/bbuchfink/diamond
-3. minimap2 - https://github.com/lh3/minimap2
-4. Linux commands: sort, gzip, wget - https://www.gnu.org/software/wget/
+2. Perl module "Bio::DB::Taxonomy" - https://bioperl.org
+3. DIAMOND - https://github.com/bbuchfink/diamond
+4. minimap2 - https://github.com/lh3/minimap2
+5. Linux commands: sort, gzip, wget - https://www.gnu.org/software/wget/
 
 
 ## Install
