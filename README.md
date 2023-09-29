@@ -32,7 +32,7 @@ Options: -h       display this help message
 ```
 
 
-## Usage example
+## Example: Analysis of single species
 
 1. Create a non-redundant coding sequence database file using the given NCBI taxonomy IDs as input.
 
@@ -56,7 +56,7 @@ perl NanoPrism.pl -p $threads -t $taxonomy_id $cds_fasta_file $read_fastq_file
 ```
 
 
-## Pipeline example
+## Example: Analysis of metagenomes
 
 1. Download zymo sequencing reads
 
