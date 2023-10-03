@@ -4,7 +4,8 @@
 2. Perl module "Bio::DB::Taxonomy" - https://bioperl.org
 3. DIAMOND - https://github.com/bbuchfink/diamond
 4. minimap2 - https://github.com/lh3/minimap2
-5. Linux commands: sort, gzip, wget - https://www.gnu.org/software/wget/
+5. MetaPrism - https://github.com/jiwoongbio/MetaPrism
+6. Linux commands: sort, gzip, wget - https://www.gnu.org/software/wget/
 
 
 ## Install
@@ -13,6 +14,9 @@ If you already have Git (https://git-scm.com) installed, you can get the latest 
 
 ```
 git clone https://github.com/jiwoongbio/NanoPrism.git
+
+cd NanoPrism
+git clone https://github.com/jiwoongbio/MetaPrism.git
 ```
 
 
