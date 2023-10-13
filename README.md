@@ -6,6 +6,7 @@
 4. minimap2 - https://github.com/lh3/minimap2
 5. MetaPrism - https://github.com/jiwoongbio/MetaPrism
 6. Linux commands: sort, gzip, wget - https://www.gnu.org/software/wget/
+7. Centrifuge - http://www.ccb.jhu.edu/software/centrifuge/ (You can use another taxonomic identification tool.)
 
 
 ## Install
@@ -44,7 +45,7 @@ Options: -h       display this help message
 ```
 threads=8
 taxonomy_id=287
-cds_fasta_file=Pseudomonas_aeruginosa.CDS.fasta
+cds_fasta_file=Pseudomonas_aeruginosa.CDS.fasta # output file
 
 perl NanoPrism.pl -p $threads -t $taxonomy_id $cds_fasta_file
 ```
@@ -99,10 +100,10 @@ awk -F'\t' -va=$(awk -F'\t' '(NR > 1) {a += $6} END {print a}' $sample.centrifug
 for sample in ERR3152364 ERR3152366; do awk -F'\t' '(NR > 1) {print $2}' $sample.centrifuge.report.species.filtered.txt; done | sort -nu > species.filtered.txt
 ```
 
-4. Prepare coding sequences
+4. Prepare coding sequences.
 
 ```
-time perl NanoPrism.pl -p $threads -t species.filtered.txt NanoPrism.fasta
+time perl NanoPrism.pl -p $threads -t species.filtered.txt NanoPrism.fasta # NanoPrism.fasta is the output file.
 ```
 
 5. Profile gene abundances
