@@ -190,9 +190,8 @@ if(@targetTaxonomyIdList) {
 		my $taxonomyId = $tokenHash{'taxid'};
 		next unless(defined($taxonomyIdTargetTaxonomyIdHash{$taxonomyId}));
 
-		my @taxonomyIdList = keys %{$taxonomyIdTargetTaxonomyIdHash{$taxonomyId}};
-		next unless(grep {$targetTaxonomyIdCountHash{$_} < $maximumNumber} @taxonomyIdList);
-		$targetTaxonomyIdCountHash{$_} += 1 foreach(@taxonomyIdList);
+		my @targetTaxonomyIdList = keys %{$taxonomyIdTargetTaxonomyIdHash{$taxonomyId}};
+		next unless(grep {$targetTaxonomyIdCountHash{$_} < $maximumNumber} @targetTaxonomyIdList);
 
 		my $taxonomyIdLineage = getTaxonomyIdLineage($taxonomyId);
 
@@ -203,7 +202,8 @@ if(@targetTaxonomyIdList) {
 		my $proteinMetaPrismFile = "$dataDirectory/assembly.protein.MetaPrism/$accession.txt";
 		if(not -r $proteinMetaPrismFile or $redownload) {
 			lockFile($proteinMetaPrismFile);
-			system("wget --no-verbose -O - $ftpPath/${prefix}_protein.faa.gz | gzip -d | perl $MetaPrismDirectory/MetaPrism.pl -p $threads -P - > $proteinMetaPrismFile");
+			system("(wget --no-verbose -O - https://cdc.biohpc.swmed.edu/NanoPrism/data/assembly.protein.MetaPrism/$accession.txt.gz | gzip -d > $proteinMetaPrismFile) 2> /dev/null");
+			system("wget --no-verbose -O - $ftpPath/${prefix}_protein.faa.gz | gzip -d | perl $MetaPrismDirectory/MetaPrism.pl -p $threads -P - > $proteinMetaPrismFile") if(-z $proteinMetaPrismFile);
 			unlockFile($proteinMetaPrismFile);
 		}
 
@@ -256,15 +256,18 @@ if(@targetTaxonomyIdList) {
 							$name = "$name=>$orthology";
 						}
 						my ($chromosome, $start, $end, $strand) = @tokenHash{'chromosome', 'start', 'end', 'strand'};
-						my $index = $start - 1;
 						my $chromosomeSequence = $chromosomeSequenceHash{$chromosome};
 						my $chromosomeLength = length($chromosomeSequence);
 						my $sequence = '';
+						if($start > $chromosomeLength) {
+							$start = $start - $chromosomeLength;
+							$end = $end - $chromosomeLength;
+						}
 						if($end > $chromosomeLength) {
-							$sequence .= uc(substr($chromosomeSequence, $index));
+							$sequence .= uc(substr($chromosomeSequence, $start - 1));
 							$sequence .= uc(substr($chromosomeSequence, 0, $end - $chromosomeLength));
 						} else {
-							$sequence .= uc(substr($chromosomeSequence, $index, $end - $index));
+							$sequence .= uc(substr($chromosomeSequence, $start - 1, $end - $start + 1));
 						}
 						$nameSequenceHash{$name} = '' unless(defined($nameSequenceHash{$name}));
 						$nameSequenceHash{$name} = $nameSequenceHash{$name} . $sequence if($strand eq '+');
@@ -284,6 +287,7 @@ if(@targetTaxonomyIdList) {
 			close($writer);
 			unlockFile($cdsFastaFile);
 		}
+		$targetTaxonomyIdCountHash{$_} += 1 foreach(@targetTaxonomyIdList);
 		push(@cdsFastaFileList, $cdsFastaFile);
 	}
 	close($reader);
