@@ -14,10 +14,10 @@ CF_IDX=centrifuge/data/p_compressed # Centrifuge index filename prefix
 export PATH=$CF_DIR${PATH:+:${PATH}}
 
 sample=ERR3152364
-centrifuge -p $threads -x $CF_IDX -U $sample.fastq.gz --report-file $sample.centrifuge.report.txt | gzip > $sample.centrifuge.txt.gz
+time centrifuge -p $threads -x $CF_IDX -U $sample.fastq.gz --report-file $sample.centrifuge.report.txt | gzip > $sample.centrifuge.txt.gz
 
 sample=ERR3152366
-centrifuge -p $threads -x $CF_IDX -U $sample.fastq.gz --report-file $sample.centrifuge.report.txt | gzip > $sample.centrifuge.txt.gz
+time centrifuge -p $threads -x $CF_IDX -U $sample.fastq.gz --report-file $sample.centrifuge.report.txt | gzip > $sample.centrifuge.txt.gz
 
 
 # Filter 1% abundant species

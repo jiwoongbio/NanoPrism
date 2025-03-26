@@ -425,7 +425,15 @@ if(@fastqFileList) {
 	close($writer) if(defined($writer));
 	if($baseAbundanceOrthologies ne '') {
 		my @baseAbundanceOrthologyList = split(/,/, $baseAbundanceOrthologies);
-		my $baseAbundance = median(@orthologyCoverageHash{@baseAbundanceOrthologyList});
+		my @baseAbundanceList = ();
+		foreach my $orthology (@baseAbundanceOrthologyList) {
+			if(defined(my $baseAbundance = $orthologyCoverageHash{$orthology})) {
+				push(@baseAbundanceList, $baseAbundance);
+			} else {
+				print STDERR "$orthology is excluded from normalization.\n";
+			}
+		}
+		my $baseAbundance = median(@baseAbundanceList);
 		foreach my $orthology (sort keys %orthologyCoverageHash) {
 			$orthologyCoverageHash{$orthology} = $orthologyCoverageHash{$orthology} / $baseAbundance;
 		}
