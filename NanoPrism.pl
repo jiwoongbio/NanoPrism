@@ -294,99 +294,104 @@ if(@targetTaxonomyIdList) {
 }
 
 if(defined($fastaFile)) {
-	foreach my $cdsFastaFile (@cdsFastaFileList) {
-		my %excludeNameHash = ();
-		my %excludeReferenceNameHash = ();
-		my %nameUpdatedHash = ();
-		if(-r $fastaFile) {
-			open(my $reader, "minimap2 @optionList $fastaFile $cdsFastaFile |") or die "minimap2 error: $!";
-			while(my $line = <$reader>) {
-				chomp($line);
-				next if($line =~ /^@/);
-				my %tokenHash = ();
-				(@tokenHash{@pafMandatoryColumnList}, my @tagTypeValueList) = split(/\t/, $line, -1);
-				$tokenHash{"$_->[0]:$_->[1]"} = $_->[2] foreach(map {[split(/:/, $_, 3)]} @tagTypeValueList);
-				next unless($tokenHash{'strand'} eq '+');
-				if($tokenHash{'match'} / $tokenHash{'query_length'} >= $minimumCoverage) {
-					if($tokenHash{'query_name'} =~ /=>(.*)$/) {
-						my $orthology = $1;
-						if($tokenHash{'target_name'} =~ /=>(.*)$/) {
-							if($1 eq $orthology) {
-								$excludeNameHash{$tokenHash{'query_name'}} = 1;
+	lockFile($fastaFile);
+	if(not -r $fastaFile or $redownload) {
+		system("rm -f $fastaFile");
+		foreach my $cdsFastaFile (@cdsFastaFileList) {
+			my %excludeNameHash = ();
+			my %excludeReferenceNameHash = ();
+			my %nameUpdatedHash = ();
+			if(-r $fastaFile) {
+				open(my $reader, "minimap2 @optionList $fastaFile $cdsFastaFile |") or die "minimap2 error: $!";
+				while(my $line = <$reader>) {
+					chomp($line);
+					next if($line =~ /^@/);
+					my %tokenHash = ();
+					(@tokenHash{@pafMandatoryColumnList}, my @tagTypeValueList) = split(/\t/, $line, -1);
+					$tokenHash{"$_->[0]:$_->[1]"} = $_->[2] foreach(map {[split(/:/, $_, 3)]} @tagTypeValueList);
+					next unless($tokenHash{'strand'} eq '+');
+					if($tokenHash{'match'} / $tokenHash{'query_length'} >= $minimumCoverage) {
+						if($tokenHash{'query_name'} =~ /=>(.*)$/) {
+							my $orthology = $1;
+							if($tokenHash{'target_name'} =~ /=>(.*)$/) {
+								if($1 eq $orthology) {
+									$excludeNameHash{$tokenHash{'query_name'}} = 1;
+								} else {
+									print STDERR "different orthology $tokenHash{'target_name'} $tokenHash{'query_name'}\n";
+								}
+								my ($taxonomyIdLineage1, $accession1, $locusTag1, $proteinId1) = split(/\|/, $tokenHash{'target_name'});
+								my ($taxonomyIdLineage2, $accession2, $locusTag2, $proteinId2) = split(/\|/, $tokenHash{'query_name'});
+								$nameUpdatedHash{$tokenHash{'target_name'}} = join('|', getCommonTaxonomyIdLineage($taxonomyIdLineage1, $taxonomyIdLineage2), $accession1, $locusTag1, $proteinId1);
 							} else {
-								print STDERR "different orthology $tokenHash{'target_name'} $tokenHash{'query_name'}\n";
+								print STDERR "exclude $tokenHash{'target_name'}\n";
+								$excludeReferenceNameHash{$tokenHash{'target_name'}} = 1;
 							}
-							my ($taxonomyIdLineage1, $accession1, $locusTag1, $proteinId1) = split(/\|/, $tokenHash{'target_name'});
-							my ($taxonomyIdLineage2, $accession2, $locusTag2, $proteinId2) = split(/\|/, $tokenHash{'query_name'});
-							$nameUpdatedHash{$tokenHash{'target_name'}} = join('|', getCommonTaxonomyIdLineage($taxonomyIdLineage1, $taxonomyIdLineage2), $accession1, $locusTag1, $proteinId1);
 						} else {
-							print STDERR "exclude $tokenHash{'target_name'}\n";
-							$excludeReferenceNameHash{$tokenHash{'target_name'}} = 1;
+							$excludeNameHash{$tokenHash{'query_name'}} = 1;
 						}
-					} else {
-						$excludeNameHash{$tokenHash{'query_name'}} = 1;
 					}
 				}
+				close($reader);
 			}
-			close($reader);
-		}
-		if(%excludeReferenceNameHash) {
-			open(my $writer, "> $fastaFile.updated") or die "Can't write '$fastaFile.updated': $!";
-			open(my $reader, "$fastaFile") or die "Can't read '$fastaFile': $!";
-			my $add = '';
-			while(my $line = <$reader>) {
-				chomp($line);
-				if($line =~ /^>(\S*)/) {
-					my $name = $1;
-					if($excludeReferenceNameHash{$name}) {
-						$add = '';
-					} else {
-						$add = 1;
-						if(defined($nameUpdatedHash{$name})) {
-							print $writer ">$nameUpdatedHash{$name}\n";
+			if(%excludeReferenceNameHash) {
+				open(my $writer, "> $fastaFile.updated") or die "Can't write '$fastaFile.updated': $!";
+				open(my $reader, "$fastaFile") or die "Can't read '$fastaFile': $!";
+				my $add = '';
+				while(my $line = <$reader>) {
+					chomp($line);
+					if($line =~ /^>(\S*)/) {
+						my $name = $1;
+						if($excludeReferenceNameHash{$name}) {
+							$add = '';
 						} else {
+							$add = 1;
+							if(defined($nameUpdatedHash{$name})) {
+								print $writer ">$nameUpdatedHash{$name}\n";
+							} else {
+								print $writer ">$name\n";
+							}
+						}
+					} elsif($add) {
+						print $writer "$line\n";
+					}
+				}
+				close($reader);
+				close($writer);
+				system("mv $fastaFile.updated $fastaFile");
+			}
+			{
+				open(my $writer, ">> $fastaFile") or die "Can't write '$fastaFile': $!";
+				open(my $reader, "$cdsFastaFile") or die "Can't read '$cdsFastaFile': $!";
+				my $add = '';
+				my $addCount = 0;
+				my $count = 0;
+				while(my $line = <$reader>) {
+					chomp($line);
+					if($line =~ /^>(\S*)/) {
+						my $name = $1;
+						if($excludeNameHash{$name}) {
+							$add = '';
+						} else {
+							$add = 1;
+							$addCount += 1;
 							print $writer ">$name\n";
 						}
+						$count += 1;
+					} elsif($add) {
+						print $writer "$line\n";
 					}
-				} elsif($add) {
-					print $writer "$line\n";
 				}
+				print STDERR "add $cdsFastaFile $addCount / $count\n";
+				close($reader);
+				close($writer);
 			}
-			close($reader);
-			close($writer);
-			system("mv $fastaFile.updated $fastaFile");
-		}
-		{
-			open(my $writer, ">> $fastaFile") or die "Can't write '$fastaFile': $!";
-			open(my $reader, "$cdsFastaFile") or die "Can't read '$cdsFastaFile': $!";
-			my $add = '';
-			my $addCount = 0;
-			my $count = 0;
-			while(my $line = <$reader>) {
-				chomp($line);
-				if($line =~ /^>(\S*)/) {
-					my $name = $1;
-					if($excludeNameHash{$name}) {
-						$add = '';
-					} else {
-						$add = 1;
-						$addCount += 1;
-						print $writer ">$name\n";
-					}
-					$count += 1;
-				} elsif($add) {
-					print $writer "$line\n";
-				}
-			}
-			print STDERR "add $cdsFastaFile $addCount / $count\n";
-			close($reader);
-			close($writer);
 		}
 	}
+	unlockFile($fastaFile);
 }
 
 if(@fastqFileList) {
-	my %orthologyCoverageHash = ();
+	my %orthologyAbundanceHash = ();
 	foreach my $fastqFile (@fastqFileList) {
 		die "'$fastqFile' is not readable.\n" unless(-r $fastqFile);
 	}
@@ -417,29 +422,39 @@ if(@fastqFileList) {
 			}
 			if($tokenHash{'target_name'} =~ /=>(.*)$/) {
 				my $orthology = $1;
-				$orthologyCoverageHash{$orthology} = $tokenHash{'match'} / $tokenHash{'target_length'};
+				$orthologyAbundanceHash{$orthology} = $tokenHash{'match'} / $tokenHash{'target_length'};
 			}
 		}
 		close($reader);
 	}
 	close($writer) if(defined($writer));
-	if($baseAbundanceOrthologies ne '') {
-		my @baseAbundanceOrthologyList = split(/,/, $baseAbundanceOrthologies);
-		my @baseAbundanceList = ();
-		foreach my $orthology (@baseAbundanceOrthologyList) {
-			if(defined(my $baseAbundance = $orthologyCoverageHash{$orthology})) {
-				push(@baseAbundanceList, $baseAbundance);
+	if(%orthologyAbundanceHash) {
+		if($baseAbundanceOrthologies ne '') {
+			my @baseAbundanceOrthologyList = split(/,/, $baseAbundanceOrthologies);
+			my @baseAbundanceList = ();
+			foreach my $orthology (@baseAbundanceOrthologyList) {
+				if(defined(my $baseAbundance = $orthologyAbundanceHash{$orthology})) {
+					push(@baseAbundanceList, $baseAbundance);
+				} else {
+					print STDERR "$orthology is excluded from normalization.\n";
+				}
+			}
+			my $baseAbundance = 1;
+			if(@baseAbundanceList) {
+				$baseAbundance = median(@baseAbundanceList);
 			} else {
-				print STDERR "$orthology is excluded from normalization.\n";
+				print STDERR "No base abundance orthology.\n";
+				$baseAbundance = median(values %orthologyAbundanceHash);
+			}
+			foreach my $orthology (sort keys %orthologyAbundanceHash) {
+				$orthologyAbundanceHash{$orthology} = $orthologyAbundanceHash{$orthology} / $baseAbundance;
 			}
 		}
-		my $baseAbundance = median(@baseAbundanceList);
-		foreach my $orthology (sort keys %orthologyCoverageHash) {
-			$orthologyCoverageHash{$orthology} = $orthologyCoverageHash{$orthology} / $baseAbundance;
+		foreach my $orthology (sort keys %orthologyAbundanceHash) {
+			print join("\t", $orthology, $orthologyAbundanceHash{$orthology}), "\n";
 		}
-	}
-	foreach my $orthology (sort keys %orthologyCoverageHash) {
-		print join("\t", $orthology, $orthologyCoverageHash{$orthology}), "\n";
+	} else {
+		print STDERR "No orthology.\n";
 	}
 }
 
@@ -454,11 +469,13 @@ sub MetaPrism_data {
 sub lockFile {
 	my ($file) = @_;
 	while(-r "$file.lock") {
-		my ($hostname, $pid) = `cat $file.lock`;
-		chomp($hostname);
-		chomp($pid);
-		chomp(my $stat = `ssh $hostname ps -p $pid --no-headers -o stat`);
-		last if($stat eq '' || $stat =~ /Z/);
+		my ($hostname, $pid) = `cat $file.lock 2> /dev/null`;
+		if(defined($hostname) && $hostname ne '' && defined($pid) && $pid ne '') {
+			chomp($hostname);
+			chomp($pid);
+			chomp(my $stat = `ssh $hostname ps -p $pid --no-headers -o stat 2>&1`);
+			last if($stat eq '' || $stat =~ /Z/);
+		}
 		sleep(1);
 	}
 	open(my $writer, "> $file.lock");
