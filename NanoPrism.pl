@@ -397,7 +397,11 @@ if(@fastqFileList) {
 	}
 	my $writer;
 	if($pafFile ne '') {
-		open($writer, "| gzip > $pafFile") or die "Can't write '$pafFile': $!";
+		if($pafFile =~ /\.gz$/) {
+			open($writer, "| gzip > $pafFile") or die "Can't write '$pafFile': $!";
+		} else {
+			open($writer, "> $pafFile") or die "Can't write '$pafFile': $!";
+		}
 	}
 	foreach my $index (0 .. $#fastqFileList) {
 		my $fastqFile = $fastqFileList[$index];
@@ -422,7 +426,7 @@ if(@fastqFileList) {
 			}
 			if($tokenHash{'target_name'} =~ /=>(.*)$/) {
 				my $orthology = $1;
-				$orthologyAbundanceHash{$orthology} = $tokenHash{'match'} / $tokenHash{'target_length'};
+				$orthologyAbundanceHash{$orthology} += $tokenHash{'match'} / $tokenHash{'target_length'};
 			}
 		}
 		close($reader);
