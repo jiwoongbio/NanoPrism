@@ -6,7 +6,7 @@
 4. minimap2 - https://github.com/lh3/minimap2
 5. MetaPrism - https://github.com/jiwoongbio/MetaPrism
 6. Linux commands: sort, gzip, wget - https://www.gnu.org/software/wget/
-7. Centrifuge - http://www.ccb.jhu.edu/software/centrifuge/ (You can use another taxonomic identification tool.)
+7. Kraken 2 - https://github.com/DerrickWood/kraken2 (You can use another taxonomic identification tool.)
 
 
 ## Install
@@ -28,10 +28,13 @@ Usage:   perl NanoPrism_data.pl [options] [CDS.fasta [read.fastq ...]]
 
 Options: -h       display this help message
          -r       redownload data
-         -p INT   number of threads [1]
-         -t STR   target NCBI taxonomy IDs or file
+         -p INT   number of CPU threads [1]
+         -t STR   comma-separated target NCBI taxonomy IDs or files
+         -k STR   comma-separated Kraken 2 report files
          -x STR   minimap2 preset [map-ont]
-         -c FLOAT minimum coverage [0.9]
+         -c FLOAT minimum coverage for redundancy [0.9]
+         -i FLOAT minimum identity for read mapping [0.5]
+         -b STR   base abundance orthologies [K02950,K02874,K02946,K02948,K02867,K02952,K02886,K02988,K02992,K02965]
          -P FILE  minimap2 PAF file
          -S STR   stranded, "f" or "r"
          -M DIR   MetaPrism directory [MetaPrism]
@@ -64,54 +67,37 @@ perl NanoPrism.pl -p $threads -t $taxonomy_id $cds_fasta_file $read_fastq_file
 
 ## Example: Analysis of metagenomes
 
-1. Download zymo sequencing reads
+1. Download Zymo sequencing reads
 
 ```
 wget --no-verbose ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR315/004/ERR3152364/ERR3152364.fastq.gz
 wget --no-verbose ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR315/006/ERR3152366/ERR3152366.fastq.gz
 ```
 
-2. Taxonomic classification by Centrifuge
+2. Taxonomic classification by Kraken 2
 
 ```
-CF_DIR=centrifuge # Centrifuge directory
-CF_IDX=centrifuge/data/p_compressed # Centrifuge index filename prefix
+export KRAKEN2=kraken2                 # Kraken 2 executable
+export KRAKEN2_DB=kraken/k2_pluspf     # Kraken 2 database directory
 
-export PATH=$CF_DIR${PATH:+:${PATH}}
-
-sample=ERR3152364
-centrifuge -p $threads -x $CF_IDX -U $sample.fastq.gz --report-file $sample.centrifuge.report.txt | gzip > $sample.centrifuge.txt.gz
-
-sample=ERR3152366
-centrifuge -p $threads -x $CF_IDX -U $sample.fastq.gz --report-file $sample.centrifuge.report.txt | gzip > $sample.centrifuge.txt.gz
+# Only the Kraken 2 report is used by NanoPrism, so read-level output is discarded.
+time $KRAKEN2 --db $KRAKEN2_DB --threads $threads --report ERR3152364.kraken2.report.txt --gzip-compressed ERR3152364.fastq.gz > /dev/null
+time $KRAKEN2 --db $KRAKEN2_DB --threads $threads --report ERR3152366.kraken2.report.txt --gzip-compressed ERR3152366.fastq.gz > /dev/null
 ```
 
-3. Filter 1% abundant species
+3. Prepare coding sequences using Kraken 2 taxonomic profiles
 
 ```
-sample=ERR3152364
-awk -F'\t' '(NR == 1 || $3 == "species")' $sample.centrifuge.report.txt > $sample.centrifuge.report.species.txt
-awk -F'\t' -va=$(awk -F'\t' '(NR > 1) {a += $6} END {print a}' $sample.centrifuge.report.species.txt) '(NR == 1 || $6 / a >= 0.01)' $sample.centrifuge.report.species.txt > $sample.centrifuge.report.species.filtered.txt
-
-sample=ERR3152366
-awk -F'\t' '(NR == 1 || $3 == "species")' $sample.centrifuge.report.txt > $sample.centrifuge.report.species.txt
-awk -F'\t' -va=$(awk -F'\t' '(NR > 1) {a += $6} END {print a}' $sample.centrifuge.report.species.txt) '(NR == 1 || $6 / a >= 0.01)' $sample.centrifuge.report.species.txt > $sample.centrifuge.report.species.filtered.txt
-
-for sample in ERR3152364 ERR3152366; do awk -F'\t' '(NR > 1) {print $2}' $sample.centrifuge.report.species.filtered.txt; done | sort -nu > species.filtered.txt
+time perl NanoPrism.pl -p $threads -k ERR3152364.kraken2.report.txt -k ERR3152366.kraken2.report.txt NanoPrism.fasta # NanoPrism.fasta is the output file.
 ```
 
-4. Prepare coding sequences.
-
-```
-time perl NanoPrism.pl -p $threads -t species.filtered.txt NanoPrism.fasta # NanoPrism.fasta is the output file.
-```
-
-5. Profile gene abundances
+4. Profile gene abundances
 
 ```
 time perl NanoPrism.pl -p $threads NanoPrism.fasta ERR3152364.fastq.gz > ERR3152364.NanoPrism.abundance.txt
 time perl NanoPrism.pl -p $threads NanoPrism.fasta ERR3152366.fastq.gz > ERR3152366.NanoPrism.abundance.txt
 ```
+
 
 By default, the abundances are normalized by the following genes:
 

@@ -26,19 +26,23 @@ my $sortedAssemblySummaryFile = "$dataDirectory/assembly_summary.sorted.txt";
 my $maximumNumber = 100;
 
 my @pafMandatoryColumnList = ('query_name', 'query_length', 'query_start', 'query_end', 'strand', 'target_name', 'target_length', 'target_start', 'target_end', 'match', 'alignment_length', 'mapping_quality');
+my @kraken2ReportColumnList = ('clade_fragment_pct', 'clade_fragment_count', 'direct_fragment_count', 'rank_code', 'tax_id', 'scientific_name_indented');
 
 chomp(my $hostname = `hostname`);
 
 my $baseAbundanceOrthologies = 'K02950,K02874,K02946,K02948,K02867,K02952,K02886,K02988,K02992,K02965';
 
 my @targetTaxonomyIdList = ();
+my @kraken2ReportFileList = ();
 GetOptions(
 	'h' => \(my $help = ''),
 	'r' => \(my $redownload = ''),
 	'p=i' => \(my $threads = 1),
 	't=s' => \@targetTaxonomyIdList,
+	'k=s' => \@kraken2ReportFileList,
 	'x=s' => \(my $preset = 'map-ont'),
 	'c=f' => \(my $minimumCoverage = 0.9),
+	'i=f' => \(my $minimumIdentity = 0.5),
 	'b=s' => \$baseAbundanceOrthologies,
 	'P=s' => \(my $pafFile = ''),
 	'S=s' => \(my $stranded = ''),
@@ -53,9 +57,11 @@ Usage:   perl NanoPrism_data.pl [options] [CDS.fasta [read.fastq ...]]
 Options: -h       display this help message
          -r       redownload data
          -p INT   number of CPU threads [$threads]
-         -t STR   comma-separated target NCBI taxonomy IDs or file
+         -t STR   comma-separated target NCBI taxonomy IDs or files
+         -k STR   comma-separated Kraken 2 report files
          -x STR   minimap2 preset [$preset]
-         -c FLOAT minimum coverage [$minimumCoverage]
+         -c FLOAT minimum coverage for redundancy [$minimumCoverage]
+         -i FLOAT minimum identity for read mapping [$minimumIdentity]
          -b STR   base abundance orthologies [$baseAbundanceOrthologies]
          -P FILE  minimap2 PAF file
          -S STR   stranded, "f" or "r"
@@ -64,6 +70,19 @@ Options: -h       display this help message
 EOF
 }
 @targetTaxonomyIdList = map {split(/,/, $_)} @targetTaxonomyIdList;
+
+foreach my $kraken2ReportFile (@kraken2ReportFileList) {
+	open(my $reader, ($kraken2ReportFile =~ /\.gz$/ ? "gzip -dc $kraken2ReportFile |" : $kraken2ReportFile)) or die "Can't read '$kraken2ReportFile': $!";
+	while(my $line = <$reader>) {
+		chomp($line);
+		my %tokenHash = ();
+		@tokenHash{@kraken2ReportColumnList} = split(/\t/, $line, -1);
+		if($tokenHash{'clade_fragment_pct'} >= 1 && $tokenHash{'rank_code'} eq 'S') {
+			push(@targetTaxonomyIdList, $tokenHash{'tax_id'});
+		}
+	}
+	close($reader);
+}
 
 my @optionList = ();
 push(@optionList, "-t $threads");
@@ -418,6 +437,8 @@ if(@fastqFileList) {
 			my %tokenHash = ();
 			(@tokenHash{@pafMandatoryColumnList}, my @tagTypeValueList) = split(/\t/, $line, -1);
 			$tokenHash{"$_->[0]:$_->[1]"} = $_->[2] foreach(map {[split(/:/, $_, 3)]} @tagTypeValueList);
+			next if($tokenHash{'tp:A'} ne 'P');
+			next if($tokenHash{'match'} / $tokenHash{'alignment_length'} >= $minimumIdentity);
 			if($stranded eq 'f' || $stranded eq 'forward') {
 				next unless($tokenHash{'strand'} eq '+');
 			}
