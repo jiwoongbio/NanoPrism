@@ -52,7 +52,7 @@ GetOptions(
 if($help) {
 	die <<EOF;
 
-Usage:   perl NanoPrism_data.pl [options] [CDS.fasta [read.fastq ...]]
+Usage:   perl NanoPrism.pl [options] [CDS.fasta [read.fastq ...]]
 
 Options: -h       display this help message
          -r       redownload data
@@ -438,7 +438,7 @@ if(@fastqFileList) {
 			(@tokenHash{@pafMandatoryColumnList}, my @tagTypeValueList) = split(/\t/, $line, -1);
 			$tokenHash{"$_->[0]:$_->[1]"} = $_->[2] foreach(map {[split(/:/, $_, 3)]} @tagTypeValueList);
 			next if($tokenHash{'tp:A'} ne 'P');
-			next if($tokenHash{'match'} / $tokenHash{'alignment_length'} >= $minimumIdentity);
+			next if($tokenHash{'match'} / $tokenHash{'alignment_length'} < $minimumIdentity);
 			if($stranded eq 'f' || $stranded eq 'forward') {
 				next unless($tokenHash{'strand'} eq '+');
 			}

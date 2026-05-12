@@ -5,12 +5,12 @@ set -euo pipefail
 threads=16
 
 # Download Zymo sequencing reads
-wget --no-verbose ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR315/004/ERR3152364/ERR3152364.fastq.gz
-wget --no-verbose ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR315/006/ERR3152366/ERR3152366.fastq.gz
+#wget --no-verbose ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR315/004/ERR3152364/ERR3152364.fastq.gz
+#wget --no-verbose ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR315/006/ERR3152366/ERR3152366.fastq.gz
 
 # Taxonomic classification by Kraken 2
-export KRAKEN2=kraken2                 # Kraken 2 executable
-export KRAKEN2_DB=kraken/k2_pluspf     # Kraken 2 database directory
+export KRAKEN2=/archive/PCDC/PCDC_Core/shared/pipelines/kraken2-2.1.6/kraken2                 # Kraken 2 executable
+export KRAKEN2_DB=/archive/PCDC/PCDC_Core/shared/pipelines/data/kraken2/k2_pluspf_16gb_20240605     # Kraken 2 database directory
 
 # Only the Kraken 2 report is used by NanoPrism, so read-level output is discarded.
 time $KRAKEN2 --db $KRAKEN2_DB --threads $threads --report ERR3152364.kraken2.report.txt --gzip-compressed ERR3152364.fastq.gz > /dev/null
